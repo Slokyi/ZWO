@@ -1,51 +1,54 @@
-Git是一个分布式版本控制系统，可以帮助团队合作开发项目。在使用Git时，经常需要统计某些信息，如提交次数、代码行数、贡献者等。下面是一些常用的Git统计命令集，按照不同的统计需求进行分类。
+param(
+    [string]$branch1 = "master",
+    [string]$branch2 = "feature"
+)
 
-统计提交次数：
-1. 统计总提交次数：
-   “`
-   git rev-list –count HEAD
-   “`
+$contributors = @{}
 
-2. 统计某个作者的提交次数：
-   “`
-   git shortlog -s -n –all –no-merges –author=”作者姓名”
-   “`
+git log --pretty="%an" --numstat --no-merges "$branch1...$branch2" | ForEach-Object {
+    $line = $_.Trim()
+    
+    if (-not $line) {
+        $currentAuthor = $null
+    }
+    elseif (-not $currentAuthor) {
+        $currentAuthor = $line
+        if (-not $contributors.ContainsKey($currentAuthor)) {
+            $contributors[$currentAuthor] = [PSCustomObject]@{
+                Additions    = 0
+                Deletions    = 0
+                Modifications = 0
+            }
+        }
+    }
+    else {
+        $parts = $line -split '\s+'
+        if ($parts.Length -ge 2) {
+            $add = $parts[0]
+            $del = $parts[1]
+            
+            $addVal = if ($add -match '^\d+$') { [int]$add } else { 0 }
+            $delVal = if ($del -match '^\d+$') { [int]$del } else { 0 }
+            
+            $mod = [Math]::Min($addVal, $delVal)
+            $pureAdd = $addVal - $mod
+            $pureDel = $delVal - $mod
+            
+            $contributors[$currentAuthor].Additions += $pureAdd
+            $contributors[$currentAuthor].Deletions += $pureDel
+            $contributors[$currentAuthor].Modifications += $mod
+        }
+    }
+}
 
-3. 统计每个开发者的提交次数：
-   “`
-   git shortlog -s -n –all –no-merges
-   “`
+$results = $contributors.GetEnumerator() | ForEach-Object {
+    [PSCustomObject]@{
+        Author        = $_.Key
+        Additions     = $_.Value.Additions
+        Deletions     = $_.Value.Deletions
+        Modifications = $_.Value.Modifications
+        TotalChanges = $_.Value.Additions + $_.Value.Deletions + $_.Value.Modifications
+    }
+} | Sort-Object Author
 
-4. 统计每个开发者的提交次数以及详细信息：
-   “`
-   git log –format=’%aN’ | sort | uniq -c | sort -rn
-   “`
-
-统计代码行数：
-1. 统计总代码行数：
-   “`
-   git ls-files | xargs cat | wc -l
-   “`
-
-2. 统计某个文件的代码行数：
-   “`
-   git show HEAD:path/to/file | wc -l
-   “`
-
-3. 统计总代码行数，并按照文件类型分类：
-   “`
-   git ls-files | grep “\.\(java\|py\|cpp\|html\)$” | xargs cat | wc -l
-   “`
-
-统计贡献者：
-1. 统计每个开发者的提交次数和代码行数：
-   “`
-   git log –format=’%aN’ –numstat | awk ‘{ add += $1; subs += $2; loc += $1 – $2 } END { printf “提交次数: %s, 增加的行数: %s, 删除的行数: %s, 总代码行数变化: %s\n”, NR, add, subs, loc }’ –
-   “`
-
-2. 统计每个开发者的提交次数和代码行数，并按照贡献程度排序：
-   “`
-   git log –format=’%aN’ –numstat | awk ‘{ add += $1; subs += $2; loc += $1 – $2 } END { printf “提交次数: %s, 增加的行数: %s, 删除的行数: %s, 总代码行数变化: %s\n”, NR, add, subs, loc }’ – | sort -rn -k 4
-   “`
-
-以上是一些常用的Git统计命令集，可以根据实际需要进行使用和修改。这些命令可以帮助开发者更好地了解代码库的变化和项目贡献者的情况。
+$results | Format-Table -AutoSize
