@@ -1,48 +1,51 @@
-1.根据用户名时间段统计
+Git是一个分布式版本控制系统，可以帮助团队合作开发项目。在使用Git时，经常需要统计某些信息，如提交次数、代码行数、贡献者等。下面是一些常用的Git统计命令集，按照不同的统计需求进行分类。
 
-git log --author="username" --since=2018-01-01 --until=2019-12-31 --pretty=tformat: --numstat | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }' -
+统计提交次数：
+1. 统计总提交次数：
+   “`
+   git rev-list –count HEAD
+   “`
 
-2.查看提交者排名前N位
+2. 统计某个作者的提交次数：
+   “`
+   git shortlog -s -n –all –no-merges –author=”作者姓名”
+   “`
 
-git log --pretty='%aN' | sort | uniq -c | sort -k1 -n -r | head -n 5
+3. 统计每个开发者的提交次数：
+   “`
+   git shortlog -s -n –all –no-merges
+   “`
 
-3.提交数统计
+4. 统计每个开发者的提交次数以及详细信息：
+   “`
+   git log –format=’%aN’ | sort | uniq -c | sort -rn
+   “`
 
-git log --oneline | wc -l
+统计代码行数：
+1. 统计总代码行数：
+   “`
+   git ls-files | xargs cat | wc -l
+   “`
 
-4.根据用户名统计
+2. 统计某个文件的代码行数：
+   “`
+   git show HEAD:path/to/file | wc -l
+   “`
 
-git log --author="username" --pretty=tformat: --numstat | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }' -
+3. 统计总代码行数，并按照文件类型分类：
+   “`
+   git ls-files | grep “\.\(java\|py\|cpp\|html\)$” | xargs cat | wc -l
+   “`
 
-5.根据时间段统计
+统计贡献者：
+1. 统计每个开发者的提交次数和代码行数：
+   “`
+   git log –format=’%aN’ –numstat | awk ‘{ add += $1; subs += $2; loc += $1 – $2 } END { printf “提交次数: %s, 增加的行数: %s, 删除的行数: %s, 总代码行数变化: %s\n”, NR, add, subs, loc }’ –
+   “`
 
-git log --since=2020-01-01 --until=2021-02-04 --pretty=tformat: --numstat | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }'
+2. 统计每个开发者的提交次数和代码行数，并按照贡献程度排序：
+   “`
+   git log –format=’%aN’ –numstat | awk ‘{ add += $1; subs += $2; loc += $1 – $2 } END { printf “提交次数: %s, 增加的行数: %s, 删除的行数: %s, 总代码行数变化: %s\n”, NR, add, subs, loc }’ – | sort -rn -k 4
+   “`
 
-6.统计每个人的增删行数
-
-git log --format='%aN' | sort -u | while read name; do echo -en "$name\t"; git log --author="$name" --pretty=tformat: --numstat | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s ", add, subs, loc }' -; done
-
-7.贡献者统计
-
-git log --pretty='%aN' | sort -u | wc -l
-
-8.根据时间段排除文件夹统计
-
-git log --since=2021-01-28 --until=2021-02-03 --pretty=tformat: --numstat -- . ":(exclude)src/test" | awk '{ add += $1; subs += $2; loc += $1 + $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }'
-
--- . ":(exclude)folderName"  folderName指src/test文件夹，这里是相对路径
-
--- . ":(exclude)folderName1"  ":(exclude)folderName2"  排除多个文件夹
-
--- . ":(exclude)folderName"也 可以用在其他的统计中；--前只能有一个空格，有多个空格识别不了
-
- 9.根据指定文件夹统计
-
-git log --since=2021-06-24 --until=2021-06-30 --pretty=tformat: --numstat | grep src/test | gawk '{ add += $1; subs += $2; loc += $1 + $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }'
-
-src/test 指定src的test目录下
-
-注意：增删也算统计的代码量就修改loc += $1 + $2
-
-10.代码存量
-find . -name *\.java  -exec wc -l  {} \; | awk '{s+=$1}END{print s}'
+以上是一些常用的Git统计命令集，可以根据实际需要进行使用和修改。这些命令可以帮助开发者更好地了解代码库的变化和项目贡献者的情况。
