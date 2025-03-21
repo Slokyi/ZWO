@@ -16,13 +16,16 @@ foreach ($line in $gitLog) {
         $deletions = [int]$parts[1]
         $file = $parts[2]
 
-        $entry = [PSCustomObject]@{
-            Author     = $currentAuthor
-            File       = $file
-            Insertions = $insertions
-            Deletions  = $deletions
+        # 排除 .xlsx 和 .xls 文件
+        if ($file -notlike "*.xlsx" -and $file -notlike "*.xls") {
+            $entry = [PSCustomObject]@{
+                Author     = $currentAuthor
+                File       = $file
+                Insertions = $insertions
+                Deletions  = $deletions
+            }
+            $fileStats += $entry
         }
-        $fileStats += $entry
     }
 }
 
@@ -36,6 +39,12 @@ $summary = $fileStats | Group-Object -Property File | ForEach-Object {
     }
 }
 
+$csvFilePath = ".\git_log_stats.csv"
+# 判断文件是否存在，如果存在则删除
+if (Test-Path -Path $csvFilePath) {
+    Remove-Item -Path $csvFilePath -Force
+}
+
 # 输出到 CSV 文件
-$summary | Export-Csv -Path ".\git_log_stats.csv" -NoTypeInformation
+$summary | Export-Csv -Path $csvFilePath -NoTypeInformation
     
