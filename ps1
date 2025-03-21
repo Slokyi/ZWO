@@ -3,7 +3,7 @@ $gitLog = git log --numstat --format="%an"
 
 # 初始化变量
 $currentAuthor = ""
-$fileStats = @{}
+$fileStats = @()
 
 foreach ($line in $gitLog) {
     if ($line -notmatch '^\d+\s+\d+\s+') {
@@ -16,25 +16,26 @@ foreach ($line in $gitLog) {
         $deletions = [int]$parts[1]
         $file = $parts[2]
 
-        if (-not $fileStats.ContainsKey($file)) {
-            $fileStats[$file] = @{
-                Author       = $currentAuthor
-                Insertions   = 0
-                Deletions    = 0
-            }
+        $entry = [PSCustomObject]@{
+            Author     = $currentAuthor
+            File       = $file
+            Insertions = $insertions
+            Deletions  = $deletions
         }
-
-        $fileStats[$file].Author = $currentAuthor
-        $fileStats[$file].Insertions += $insertions
-        $fileStats[$file].Deletions += $deletions
+        $fileStats += $entry
     }
 }
 
-# 输出结果
-Write-Output "作者-文件-新增行-删除行"
-foreach ($file in $fileStats.Keys) {
-    $author = $fileStats[$file].Author
-    $insertions = $fileStats[$file].Insertions
-    $deletions = $fileStats[$file].Deletions
-    Write-Output "$author-$file-$insertions-$deletions"
-}    
+# 对结果按文件进行汇总
+$summary = $fileStats | Group-Object -Property File | ForEach-Object {
+    [PSCustomObject]@{
+        Author     = ($_.Group | Select-Object -First 1).Author
+        File       = $_.Name
+        Insertions = ($_.Group | Measure-Object -Property Insertions -Sum).Sum
+        Deletions  = ($_.Group | Measure-Object -Property Deletions -Sum).Sum
+    }
+}
+
+# 输出到 CSV 文件
+$summary | Export-Csv -Path ".\git_log_stats.csv" -NoTypeInformation
+    
