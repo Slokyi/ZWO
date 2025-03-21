@@ -6,10 +6,14 @@ $currentAuthor = ""
 $fileStats = @()
 
 foreach ($line in $gitLog) {
-    if ($line -notmatch '^\d+\s+\d+\s+' -and -not [string]::IsNullOrWhiteSpace($line)) {
+    if ($line.StartsWith('-')) {
+        continue
+    }
+
+    if ($line -notmatch '^\d+\s+\d+\s+(?!- - )' -and -not [string]::IsNullOrWhiteSpace($line)) {
         # 如果行不匹配数字模式且不为空，说明是作者信息
         $currentAuthor = $line
-    } elseif ($line -match '^\d+\s+\d+\s+') {
+    } elseif ($line -match '^\d+\s+\d+\s+(?!- - )') {
         # 匹配数字模式，说明是文件的统计信息
         $parts = $line -split '\s+'
         $insertions = [int]$parts[0]
@@ -47,4 +51,19 @@ if (Test-Path -Path $csvFilePath) {
 
 # 输出到 CSV 文件
 $summary | Export-Csv -Path $csvFilePath -NoTypeInformation
+
+# 统计每个作者的新增总行数和删除行总数
+$authorStats = $fileStats | Group-Object -Property Author | ForEach-Object {
+    [PSCustomObject]@{
+        Author = $_.Name
+        TotalInsertions = ($_.Group | Measure-Object -Property Insertions -Sum).Sum
+        TotalDeletions = ($_.Group | Measure-Object -Property Deletions -Sum).Sum
+    }
+}
+
+# 在文件末尾逐行添加每个作者的统计信息
+foreach ($authorStat in $authorStats) {
+    $line = "作者: $($authorStat.Author), 新增行总数: $($authorStat.TotalInsertions), 删除行总数: $($authorStat.TotalDeletions)"
+    Add-Content -Path $csvFilePath -Value $line
+}
     
