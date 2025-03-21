@@ -1,18 +1,29 @@
-git log --pretty=format:"%an" --numstat | awk '
-    BEGIN { author=""; add=0; del=0 }
-    /^[0-9-]/ { add += $1 == "-" ? 0 : $1; del += $2 == "-" ? 0 : $2 }
-    /^[^0-9]/ { 
-        if (author != "") print author, add, del; 
-        author=$0; add=0; del=0 
+git log --pretty=format:"%an" --numstat | ForEach-Object {
+    if ($_ -match '^(\d+|-)\s+(\d+|-)\s+') {
+        # 处理数字行（新增/删除行）
+        $add = [int]($Matches[1] -replace '-', '0')
+        $del = [int]($Matches[2] -replace '-', '0')
+        $script:currentAdd += $add
+        $script:currentDel += $del
+    } else {
+        # 处理作者行
+        if ($script:currentAuthor) {
+            [PSCustomObject]@{
+                Author = $script:currentAuthor
+                Add    = $script:currentAdd
+                Delete = $script:currentDel
+            }
+        }
+        $script:currentAuthor = $_
+        $script:currentAdd = 0
+        $script:currentDel = 0
     }
-    END { print author, add, del }
-' | grep -v " 0 0$"
-
-
-
-
-git log --pretty=format:"%an" --numstat | awk '
-    /^[0-9-]/ { add[$author] += $1 == "-" ? 0 : $1; del[$author] += $2 == "-" ? 0 : $2 }
-    /^[^0-9]/ { author=$0 }
-    END { for (a in add) print a, add[a], del[a] }
-'
+} -End {
+    if ($script:currentAuthor) {
+        [PSCustomObject]@{
+            Author = $script:currentAuthor
+            Add    = $script:currentAdd
+            Delete = $script:currentDel
+        }
+    }
+} | Where-Object { $_.Add -ne 0 -or $_.Delete -ne 0 }
