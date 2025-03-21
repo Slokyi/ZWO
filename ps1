@@ -6,10 +6,10 @@ $currentAuthor = ""
 $fileStats = @()
 
 foreach ($line in $gitLog) {
-    if ($line -notmatch '^\d+\s+\d+\s+') {
-        # 如果行不匹配数字模式，说明是作者信息
+    if ($line -notmatch '^\d+\s+\d+\s+' -and -not [string]::IsNullOrWhiteSpace($line)) {
+        # 如果行不匹配数字模式且不为空，说明是作者信息
         $currentAuthor = $line
-    } else {
+    } elseif ($line -match '^\d+\s+\d+\s+') {
         # 匹配数字模式，说明是文件的统计信息
         $parts = $line -split '\s+'
         $insertions = [int]$parts[0]
