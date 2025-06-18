@@ -1,0 +1,89 @@
+# CSV 合并到 Excel 脚本
+param (
+    [Parameter(Mandatory = $true)]
+    [string]$CsvDirectory,  # CSV 文件目录
+    [string]$OutputExcel = "$(Get-Location)\merged_result.xlsx"  # 输出Excel路径
+)
+
+# 检查目录是否存在
+if (!(Test-Path -Path $CsvDirectory -PathType Container)) {
+    Write-Error "指定的目录不存在: $CsvDirectory"
+    exit 1
+}
+
+# 导入 Office 组件（需要安装 Microsoft Excel）
+try {
+    $excel = New-Object -ComObject Excel.Application
+    $excel.Visible = $false
+    $workbook = $excel.Workbooks.Add()
+    Write-Host "已创建新Excel工作簿"
+} catch {
+    Write-Error "创建Excel应用程序失败，请确保已安装Microsoft Excel: $_"
+    exit 1
+}
+
+# 处理CSV文件
+$csvFiles = Get-ChildItem -Path $CsvDirectory -Filter "*.csv" -File
+if ($csvFiles.Count -eq 0) {
+    Write-Host "目录中未找到CSV文件"
+    $excel.Quit()
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
+    exit 0
+}
+
+Write-Host "开始处理 $($csvFiles.Count) 个CSV文件..."
+
+foreach ($csv in $csvFiles) {
+    try {
+        # 获取工作表名称（文件名去后缀）
+        $sheetName = [System.IO.Path]::GetFileNameWithoutExtension($csv.Name)
+        
+        # 限制工作表名称长度（Excel最大支持31字符）
+        if ($sheetName.Length -gt 31) {
+            $sheetName = $sheetName.Substring(0, 31)
+            Write-Warning "工作表名称 '$($csv.Name)' 已截断为 '$sheetName'"
+        }
+        
+        # 读取CSV内容
+        $csvData = Import-Csv -Path $csv.FullName -ErrorAction Stop
+        
+        if ($csvData.Count -eq 0) {
+            Write-Warning "文件 '$($csv.Name)' 为空，跳过"
+            continue
+        }
+        
+        # 添加新工作表
+        $worksheet = $workbook.Sheets.Add()
+        $worksheet.Name = $sheetName
+        
+        # 写入表头
+        for ($i = 0; $i -lt $csvData[0].PSObject.Properties.Count; $i++) {
+            $worksheet.Cells(1, $i + 1).Value = $csvData[0].PSObject.Properties[$i].Name
+        }
+        
+        # 写入数据
+        for ($row = 0; $row -lt $csvData.Count; $row++) {
+            for ($col = 0; $col -lt $csvData[$row].PSObject.Properties.Count; $col++) {
+                $worksheet.Cells($row + 2, $col + 1).Value = $csvData[$row].PSObject.Properties[$col].Value
+            }
+        }
+        
+        Write-Host "已处理: $($csv.Name)"
+    } catch {
+        Write-Error "处理文件 '$($csv.Name)' 时出错: $_"
+    }
+}
+
+# 保存并关闭Excel
+try {
+    $workbook.SaveAs($OutputExcel)
+    $workbook.Close()
+    $excel.Quit()
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
+    Write-Host "合并完成，结果已保存至: $OutputExcel"
+} catch {
+    Write-Error "保存Excel文件时出错: $_"
+    $excel.Quit()
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
+    exit 1
+}
