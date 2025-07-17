@@ -1,0 +1,228 @@
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import * as d3 from 'd3';
+
+interface Node {
+  id: string;
+  name: string;
+  group?: number;
+}
+
+interface Link {
+  source: string;
+  target: string;
+  value: number;
+}
+
+@Component({
+  selector: 'app-relationship-diagram',
+  templateUrl: './relationship-diagram.component.html',
+  styleUrls: ['./relationship-diagram.component.scss']
+})
+export class RelationshipDiagramComponent implements OnInit {
+  @ViewChild('graphContainer', { static: true }) graphContainer!: ElementRef;
+
+  private svg: any;
+  private width = 800;
+  private height = 600;
+  private nodes: Node[] = [];
+  private links: Link[] = [];
+  private simulation: any;
+  private searchTerm = '';
+
+  constructor() { }
+
+  ngOnInit(): void {
+    this.initData();
+    this.initGraph();
+  }
+
+  private initData(): void {
+    // 示例数据
+    this.nodes = [
+      { id: '1', name: 'Node 1', group: 1 },
+      { id: '2', name: 'Node 2', group: 1 },
+      { id: '3', name: 'Node 3', group: 2 },
+      { id: '4', name: 'Node 4', group: 2 },
+      { id: '5', name: 'Node 5', group: 3 },
+      { id: '6', name: 'Node 6', group: 3 },
+      { id: '7', name: 'Node 7', group: 4 },
+    ];
+
+    this.links = [
+      { source: '1', target: '2', value: 1 },
+      { source: '1', target: '3', value: 1 },
+      { source: '2', target: '4', value: 1 },
+      { source: '3', target: '5', value: 1 },
+      { source: '5', target: '6', value: 1 },
+      { source: '6', target: '7', value: 1 },
+      { source: '4', target: '7', value: 1 },
+    ];
+  }
+
+  private initGraph(): void {
+    const container = this.graphContainer.nativeElement;
+    container.innerHTML = ''; // 清除现有内容
+
+    this.svg = d3.select(container)
+      .append('svg')
+      .attr('width', this.width)
+      .attr('height', this.height)
+      .attr('viewBox', [0, 0, this.width, this.height])
+      .attr('style', 'max-width: 100%; height: auto;');
+
+    // 箭头定义
+    this.svg.append('defs').selectAll('marker')
+      .data(['end'])
+      .join('marker')
+      .attr('id', d => d)
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 25)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', '#999');
+
+    // 创建力导向图模拟
+    this.simulation = d3.forceSimulation(this.nodes)
+      .force('link', d3.forceLink(this.links).id((d: any) => d.id).distance(100)
+      .force('charge', d3.forceManyBody().strength(-300))
+      .force('x', d3.forceX(this.width / 2))
+      .force('y', d3.forceY(this.height / 2))
+      .force('collision', d3.forceCollide().radius(30));
+
+    // 创建连线
+    const link = this.svg.append('g')
+      .selectAll('line')
+      .data(this.links)
+      .join('line')
+      .attr('stroke', '#999')
+      .attr('stroke-opacity', 0.6)
+      .attr('stroke-width', d => Math.sqrt(d.value))
+      .attr('marker-end', 'url(#end)');
+
+    // 创建节点组
+    const node = this.svg.append('g')
+      .selectAll('g')
+      .data(this.nodes)
+      .join('g')
+      .call(this.drag(this.simulation));
+
+    // 添加节点圆形
+    node.append('circle')
+      .attr('r', 10)
+      .attr('fill', this.nodeColor)
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5)
+      .on('click', (event: MouseEvent, d: Node) => this.highlightConnectedNodes(d.id));
+
+    // 添加节点文本
+    node.append('text')
+      .attr('dy', -15)
+      .attr('text-anchor', 'middle')
+      .text(d => d.name)
+      .attr('fill', '#333')
+      .attr('font-size', '12px');
+
+    // 更新模拟时的位置
+    this.simulation.on('tick', () => {
+      link
+        .attr('x1', (d: any) => d.source.x)
+        .attr('y1', (d: any) => d.source.y)
+        .attr('x2', (d: any) => d.target.x)
+        .attr('y2', (d: any) => d.target.y);
+
+      node.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+    });
+
+    // 初始应用搜索过滤
+    this.applySearchFilter();
+  }
+
+  private nodeColor = (d: Node) => {
+    const scale = d3.scaleOrdinal(d3.schemeCategory10);
+    return scale(d.group?.toString() || '0');
+  };
+
+  private drag(simulation: any) {
+    function dragstarted(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event: any, d: any) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    return d3.drag()
+      .on('start', dragstarted)
+      .on('drag', dragged)
+      .on('end', dragended);
+  }
+
+  highlightConnectedNodes(nodeId: string): void {
+    // 重置所有节点和连线的样式
+    this.svg.selectAll('circle')
+      .attr('fill', this.nodeColor)
+      .attr('r', 10);
+
+    this.svg.selectAll('line')
+      .attr('stroke', '#999')
+      .attr('stroke-opacity', 0.6);
+
+    // 找到与选中节点相关的所有连线
+    const connectedLinks = this.links.filter(
+      link => link.source === nodeId || link.target === nodeId
+    );
+
+    // 找到所有相关节点ID
+    const connectedNodeIds = new Set<string>();
+    connectedLinks.forEach(link => {
+      connectedNodeIds.add(link.source);
+      connectedNodeIds.add(link.target);
+    });
+
+    // 高亮相关节点和连线
+    this.svg.selectAll('circle')
+      .filter((d: any) => connectedNodeIds.has(d.id))
+      .attr('fill', '#ff0000')
+      .attr('r', 15);
+
+    this.svg.selectAll('line')
+      .filter((d: any) => 
+        connectedNodeIds.has(d.source.id) && connectedNodeIds.has(d.target.id)
+      )
+      .attr('stroke', '#ff0000')
+      .attr('stroke-opacity', 1);
+  }
+
+  onSearchChange(searchTerm: string): void {
+    this.searchTerm = searchTerm.toLowerCase();
+    this.applySearchFilter();
+  }
+
+  private applySearchFilter(): void {
+    if (!this.searchTerm) {
+      // 如果没有搜索词，显示所有节点
+      this.svg.selectAll('g')
+        .style('display', null);
+      return;
+    }
+
+    // 过滤并显示匹配的节点
+    this.svg.selectAll('g')
+      .style('display', (d: any) => 
+        d.name.toLowerCase().includes(this.searchTerm) ? null : 'none'
+      );
+  }
+}
