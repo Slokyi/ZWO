@@ -1,1 +1,0 @@
-@echo off & for /f "tokens=2 delims==" %%a in ('wmic os get LocalDateTime /value') do set "dt=%%a" & set "date=%dt:~0,4%%dt:~4,2%%dt:~6,2%" & robocopy "d:\abc" "d:\abc-%date%" /e /copyall /nfl /njs /njh /nc /np
