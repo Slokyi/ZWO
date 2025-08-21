@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Chart 甘特图示例</title>
+    <!-- 引入Google Chart核心库 -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        // 加载Google Chart和甘特图库
+        google.charts.load('current', { 'packages': ['gantt'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
+            // 创建数据表格
+            var data = new google.visualization.DataTable();
+            data.addColumn("string", "Task ID");
+            data.addColumn("string", "Task Name");
+            data.addColumn("string", "Resource");
+            data.addColumn("date", "Start");
+            data.addColumn("date", "End");
+            data.addColumn("number", "Duration");
+            data.addColumn("number", "Percent Complete");
+            data.addColumn("string", "Dependencies");
+
+
+            // 添加数据
+            data.addRows([
+                ['task1', '需求分析', '团队A', new Date(2024, 4, 1, 9, 0), new Date(2024, 4, 1, 9, 30), null, 100, null],
+                ['task2', '设计阶段', '团队B', new Date(2024, 4, 1, 13, 0), new Date(2024, 4, 1, 16, 45), null, 80, 'task1'],
+                ['task3', '开发阶段', '团队C', new Date(2024, 4, 1, 9, 15), new Date(2024, 4, 1, 17, 30), null, 50, null],
+                ['task4', '测试阶段', '团队D', new Date(2024, 4, 1, 10, 0), new Date(2024, 4, 1, 14, 20), null, 20, 'task1'],
+                ['task5', '部署上线', '团队A', new Date(2024, 4, 1, 15, 0), new Date(2024, 4, 1, 17, 0), null, 0, null]
+            ]);
+
+            // 设置图表选项
+            var options = {
+                height: 400,
+                gantt: {
+                    defaultStartDate: new Date(2024, 1, 1),
+                    percentEnabled: true,
+
+
+                }
+            };
+
+            // 获取图表容器并绘制图表
+            var chart = new google.visualization.Gantt(document.getElementById('gantt_chart_div'));
+            chart.draw(data, options);
+
+            // 响应窗口大小变化，重绘图表
+            window.addEventListener('resize', function () {
+                chart.draw(data, options);
+            });
+        }
+    </script>
+
+</head>
+
+<body>
+    <h1>项目进度甘特图</h1>
+    <!-- 甘特图容器 -->
+    <div id="gantt_chart_div"></div>
+</body>
+
+</html>
