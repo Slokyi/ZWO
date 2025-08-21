@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid 甘特图示例（分钟级精度）</title>
+    <!-- 引入Mermaid库 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.4.0/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .mermaid {
+            width: 100%;
+            overflow-x: auto;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>项目进度甘特图（分钟级精度）</h1>
+    <!-- Mermaid甘特图容器 -->
+    <div class="mermaid">
+        gantt
+            dateFormat  YYYY-MM-DD HH:mm
+            axisFormat  %H:%M
+            title       项目开发计划
+            excludes    weekends
+
+            section 需求分析
+            收集需求           :active,    a1, 2024-05-01 09:00, 2024-05-01 10:30
+            分析需求           :           a2, after a1, 2024-05-01 11:30
+
+            section 设计阶段
+            系统架构设计       :           d1, after a2, 2024-05-01 13:00
+            UI设计             :           d2, after d1, 2024-05-01 14:30
+
+            section 开发阶段
+            后端开发           :           dev1, after d2, 2024-05-01 15:45
+            前端开发           :           dev2, after d2, 2024-05-01 16:00
+
+            section 测试与部署
+            单元测试           :           t1, after dev1, 2024-05-01 17:15
+            集成测试           :           t2, after t1, 2024-05-01 18:00
+            部署上线           :           deploy, after t2, 2024-05-01 18:45
+    </div>
+
+    <script>
+        // 初始化Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            gantt: {
+                barHeight: 20,
+                fontFamily: 'Arial',
+                fontSize: 12,
+                padding: 10
+            }
+        });
+    </script>
+</body>
+</html>
